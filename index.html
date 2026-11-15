@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<title>Fotos</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  body{display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);user-select:none;-webkit-user-select:none}
+  #hd{display:flex;align-items:center;justify-content:center;height:48px;font-size:15px;font-weight:600;color:#e5e5ea;flex:0 0 auto}
+  #stage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 10px}
+  #photo{max-width:100%;max-height:100%;min-height:0;object-fit:contain;border-radius:4px;-webkit-touch-callout:none}
+  #ph{width:100%;max-width:420px;aspect-ratio:3/4;border-radius:6px;background:linear-gradient(135deg,#1c1c1e,#2c2c2e);display:none;align-items:center;justify-content:center;color:#636366;font-size:14px;text-align:center;padding:20px}
+  #cap{flex:0 0 auto;min-height:56px;padding:12px 20px 16px;text-align:center;font-size:14px;line-height:1.35;color:#c7c7cc;transition:opacity .6s ease}
+  #cap.out{opacity:0}
+  #mic{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:12px;width:10px;height:10px;border-radius:50%;background:#ff453a;display:none;animation:p 1.2s infinite}
+  @keyframes p{50%{opacity:.25}}
+
+  #panel{position:fixed;inset:0;background:#111;overflow-y:auto;display:none;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 24px);z-index:10;user-select:text;-webkit-user-select:text}
+  #panel h2{margin:4px 0 14px;font-size:20px}
+  .f{margin-bottom:14px}
+  .f label{display:block;font-size:13px;color:#98989d;margin-bottom:5px}
+  .f input[type=text],.f select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid #38383a;background:#1c1c1e;color:#fff;font-size:16px}
+  .f input[type=file]{color:#c7c7cc;font-size:14px;width:100%}
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+  .chk{display:flex;align-items:center;gap:10px;font-size:15px}
+  .chk input{width:22px;height:22px}
+  button{padding:12px 14px;border-radius:10px;border:0;background:#2c2c2e;color:#fff;font-size:15px;font-weight:600}
+  button.main{background:#0a84ff}
+  .hint{font-size:12px;color:#8e8e93;margin-top:5px;line-height:1.4}
+  #status{font-size:13px;color:#30d158;margin:6px 0 14px;min-height:18px}
+  hr{border:0;border-top:1px solid #2c2c2e;margin:18px 0}
+
+  #acc{display:none;flex:1;flex-direction:column;justify-content:center;padding:24px;gap:12px}
+  #acc input{width:100%;padding:16px;border-radius:12px;border:1px solid #38383a;background:#1c1c1e;color:#fff;font-size:18px}
+  #acc button{padding:16px;font-size:17px;background:#0a84ff}
+  #ast{text-align:center;color:#30d158;font-size:14px;min-height:20px}
+</style>
+</head>
+<body>
+
+<div id="hd">Hoy</div>
+<div id="stage">
+  <img id="photo" alt="" style="display:none">
+  <div id="ph">Abre el panel interno (3 toques rápidos sobre “Hoy”) para elegir la foto.</div>
+</div>
+<div id="cap"></div>
+<div id="mic"></div>
+
+<!-- Vista del cómplice -->
+<div id="acc">
+  <input id="aw" type="text" placeholder="Escribe aquí…" autocomplete="off" autocapitalize="sentences">
+  <button id="as">Enviar</button>
+  <div id="ast"></div>
+</div>
+
+<!-- Panel interno -->
+<div id="panel">
+  <h2>Panel interno</h2>
+
+  <div class="f">
+    <label>Foto (de tu galería)</label>
+    <input id="pf" type="file" accept="image/*">
+  </div>
+  <div class="f">
+    <label>Pie de foto normal (antes de la revelación)</label>
+    <input id="pc" type="text">
+  </div>
+  <div class="f">
+    <label>Frase de revelación (usa {X} donde va lo pensado)</label>
+    <input id="pt" type="text">
+  </div>
+
+  <hr>
+
+  <div class="f">
+    <label>Modo</label>
+    <select id="pm">
+      <option value="listen">Escucha (micrófono)</option>
+      <option value="link">Enlace del cómplice</option>
+      <option value="both">Ambos a la vez</option>
+    </select>
+  </div>
+  <div class="row">
+    <div class="f">
+      <label>Palabra de apertura</label>
+      <input id="po" type="text" autocapitalize="off">
+    </div>
+    <div class="f">
+      <label>Palabra de cierre</label>
+      <input id="pe" type="text" autocapitalize="off">
+    </div>
+  </div>
+  <div class="hint" style="margin:-6px 0 14px">Dices la apertura, el espectador dice lo que pensó y tú dices el cierre. Lo que quede en medio es lo que se escribe. Si dejas el cierre vacío, se toma lo que se diga después de la apertura al hacer una pausa. Si dejas la apertura vacía, se escucha todo desde el inicio.</div>
+
+  <div class="f">
+    <label>Idioma del reconocimiento</label>
+    <select id="pl">
+      <option value="es-MX">Español (México)</option>
+      <option value="es-PE">Español (Perú)</option>
+      <option value="es-CO">Español (Colombia)</option>
+      <option value="es-AR">Español (Argentina)</option>
+      <option value="es-ES">Español (España)</option>
+      <option value="en-US">English (US)</option>
+    </select>
+  </div>
+  <div class="f chk">
+    <input id="pmic" type="checkbox"><label for="pmic" style="margin:0;font-size:15px;color:#fff">Mostrar punto rojo mientras escucha</label>
+  </div>
+  <div class="hint" style="margin:-6px 0 14px">Apagado por defecto: la pantalla no muestra ningún micrófono. El iPhone puede mostrar su propio indicador naranja del sistema, y eso no lo controla la página.</div>
+
+  <hr>
+
+  <div class="f">
+    <label>Enlace para el cómplice</label>
+    <input id="pk" type="text" readonly>
+    <div class="row" style="margin-top:8px">
+      <button id="pcopy">Copiar enlace</button>
+      <button id="pnew">Código nuevo</button>
+    </div>
+    <div class="hint">El cómplice abre ese enlace, escribe la palabra y la envía; tu pantalla cambia sola. Quien tenga el enlace puede enviar texto, así que no lo compartas.</div>
+  </div>
+
+  <div id="status"></div>
+
+  <div class="row">
+    <button id="ptest">Probar</button>
+    <button id="preset">Reiniciar</button>
+  </div>
+  <div style="height:10px"></div>
+  <button class="main" id="pdone" style="width:100%">Listo</button>
+</div>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const KEY = 'fotopie.cfg.v1';
+  const DEF = {
+    photo:'', caption:'Un buen recuerdo', tpl:'Yo sabía que ibas a decir {X}',
+    open:'ahora', close:'gracias', mode:'listen', lang:'es-MX', showMic:false, room:''
+  };
+  let cfg = Object.assign({}, DEF);
+  try{ Object.assign(cfg, JSON.parse(localStorage.getItem(KEY)||'{}')); }catch(e){}
+  if(!cfg.room){ cfg.room = newRoom(); save(); }
+
+  function newRoom(){
+    const a = new Uint8Array(9); crypto.getRandomValues(a);
+    return Array.from(a, b => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
+  }
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify(cfg)); return true; }
+    catch(e){ alert('No se pudo guardar (la foto es muy pesada). Prueba con otra.'); return false; }
+  }
+  const topic = () => 'fp-' + cfg.room;
+  const accLink = () => location.origin + location.pathname + '?a=' + cfg.room;
+
+  /* ---------- Vista del cómplice ---------- */
+  const params = new URLSearchParams(location.search);
+  if(params.get('a')){
+    document.title = 'Mensaje';
+    $('#hd').textContent = '';
+    $('#stage').style.display = 'none';
+    $('#cap').style.display = 'none';
+    $('#acc').style.display = 'flex';
+    const room = params.get('a').replace(/[^a-z0-9]/gi,'');
+    const send = async () => {
+      const t = $('#aw').value.trim();
+      if(!t) return;
+      $('#ast').style.color = '#8e8e93'; $('#ast').textContent = 'Enviando…';
+      try{
+        const r = await fetch('https://ntfy.sh/fp-' + room, {method:'POST', body:t});
+        if(!r.ok) throw 0;
+        $('#ast').style.color = '#30d158'; $('#ast').textContent = 'Enviado ✓';
+        $('#aw').value = '';
+      }catch(e){
+        $('#ast').style.color = '#ff453a'; $('#ast').textContent = 'No se pudo enviar. Reintenta.';
+      }
+    };
+    $('#as').onclick = send;
+    $('#aw').addEventListener('keydown', e => { if(e.key === 'Enter') send(); });
+    return;
+  }
+
+  /* ---------- Vista del mago ---------- */
+  const cap = $('#cap'), img = $('#photo'), ph = $('#ph');
+  let fired = false;
+
+  function render(){
+    if(cfg.photo){ img.src = cfg.photo; img.style.display = 'block'; ph.style.display = 'none'; }
+    else { img.style.display = 'none'; ph.style.display = 'flex'; }
+    if(!fired) cap.textContent = cfg.caption;
+  }
+
+  const SMALL = new Set(['de','del','la','las','los','el','y','en']);
+  function pretty(t){
+    return t.trim().split(/\s+/).map((w,i) => {
+      const l = w.toLowerCase();
+      if(i > 0 && SMALL.has(l)) return l;
+      return l.charAt(0).toUpperCase() + l.slice(1);
+    }).join(' ');
+  }
+
+  function reveal(text){
+    const msg = cfg.tpl.replace('{X}', pretty(text));
+    cap.classList.add('out');
+    setTimeout(() => { cap.textContent = msg; cap.classList.remove('out'); }, 450);
+  }
+
+  function fire(text){
+    if(!text) return;
+    fired = true;
+    stopListen();
+    reveal(text);
+    setStatus('Revelado: ' + text);
+  }
+
+  /* ----- Reconocimiento de voz ----- */
+  let rec = null, running = false, want = false, deb = null;
+
+  function norm(s){
+    return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+  }
+  function seq(words, k, from){
+    if(!k.length) return -1;
+    for(let i = from; i <= words.length - k.length; i++){
+      let ok = true;
+      for(let j = 0; j < k.length; j++){ if(words[i+j].n !== k[j]){ ok = false; break; } }
+      if(ok) return i;
+    }
+    return -1;
+  }
+  function handle(text){
+    if(fired) return;
+    const words = text.split(/\s+/).filter(Boolean).map(o => ({o, n: norm(o)}));
+    const ok = norm(cfg.open).split(' ').filter(Boolean);
+    const ck = norm(cfg.close).split(' ').filter(Boolean);
+    let start = 0;
+    if(ok.length){
+      let last = -1, i = -1;
+      while((i = seq(words, ok, i + 1)) >= 0) last = i;
+      if(last < 0) return;
+      start = last + ok.length;
+    }
+    const end = ck.length ? seq(words, ck, start) : -1;
+    const seg = words.slice(start, end >= 0 ? end : words.length).map(w => w.o).join(' ').trim();
+    clearTimeout(deb);
+    if(end >= 0){ if(seg) fire(seg); }
+    else if(!ck.length && seg){ deb = setTimeout(() => fire(seg), 1600); }
+  }
+
+  function listenOn(){ return cfg.mode === 'listen' || cfg.mode === 'both'; }
+
+  function startListen(){
+    if(!listenOn() || fired || running) return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){ setStatus('Este navegador no permite reconocimiento de voz. Usa Safari o Chrome.'); return; }
+    rec = new SR();
+    rec.lang = cfg.lang; rec.continuous = true; rec.interimResults = true;
+    rec.onresult = e => {
+      let t = '';
+      for(let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript + ' ';
+      handle(t);
+    };
+    rec.onerror = e => {
+      if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+        want = false; setStatus('Permiso de micrófono denegado.');
+      }
+    };
+    rec.onend = () => {
+      running = false; micDot();
+      if(want && !fired) setTimeout(() => { try{ startInner(); }catch(e){} }, 300);
+    };
+    want = true;
+    startInner();
+  }
+  function startInner(){
+    if(running || !rec) return;
+    try{ rec.start(); running = true; micDot(); setStatus('Escuchando…'); }catch(e){}
+  }
+  function stopListen(){
+    want = false; clearTimeout(deb);
+    if(rec){ try{ rec.stop(); }catch(e){} }
+    running = false; micDot();
+  }
+  function micDot(){ $('#mic').style.display = (cfg.showMic && running) ? 'block' : 'none'; }
+
+  /* ----- Enlace del cómplice (ntfy.sh, tiempo real) ----- */
+  let es = null;
+  function connectLink(){
+    if(es){ es.close(); es = null; }
+    if(!(cfg.mode === 'link' || cfg.mode === 'both')) return;
+    es = new EventSource('https://ntfy.sh/' + topic() + '/sse');
+    es.onmessage = ev => {
+      try{
+        const d = JSON.parse(ev.data);
+        if(d.event === 'message' && d.message && d.message.trim()) fire(d.message.trim());
+      }catch(e){}
+    };
+  }
+
+  /* ----- Estado y reinicio ----- */
+  function setStatus(s){ $('#status').textContent = s; }
+
+  function rearm(){
+    fired = false; clearTimeout(deb);
+    cap.classList.remove('out');
+    cap.textContent = cfg.caption;
+    stopListen();
+    connectLink();
+  }
+
+  /* ----- Gestos ----- */
+  // 3 toques rápidos en "Hoy" abren el panel
+  let taps = [];
+  $('#hd').addEventListener('pointerup', () => {
+    const n = Date.now();
+    taps = taps.filter(t => n - t < 700); taps.push(n);
+    if(taps.length >= 3){ taps = []; openPanel(); }
+  });
+
+  // Cualquier toque fuera del panel arma la escucha (iOS exige un gesto del usuario)
+  document.addEventListener('pointerup', () => {
+    if($('#panel').style.display === 'block') return;
+    if(listenOn() && !fired && !running) startListen();
+  });
+
+  // Mantener pulsada la foto: reinicia el truco
+  let lp = null, lpDone = false;
+  const stage = $('#stage');
+  stage.addEventListener('pointerdown', () => { lpDone = false; lp = setTimeout(() => { lpDone = true; }, 900); });
+  const endLP = () => { clearTimeout(lp); if(lpDone){ lpDone = false; rearm(); startListen(); } };
+  stage.addEventListener('pointerup', endLP);
+  stage.addEventListener('pointercancel', () => clearTimeout(lp));
+  stage.addEventListener('contextmenu', e => e.preventDefault());
+
+  /* ----- Panel ----- */
+  function openPanel(){
+    stopListen();
+    $('#pc').value = cfg.caption; $('#pt').value = cfg.tpl;
+    $('#po').value = cfg.open; $('#pe').value = cfg.close;
+    $('#pm').value = cfg.mode; $('#pl').value = cfg.lang;
+    $('#pmic').checked = cfg.showMic;
+    $('#pk').value = accLink();
+    $('#panel').style.display = 'block';
+    setStatus('');
+  }
+  function closePanel(){
+    cfg.caption = $('#pc').value;
+    cfg.tpl = $('#pt').value.includes('{X}') ? $('#pt').value : ($('#pt').value + ' {X}');
+    cfg.open = $('#po').value.trim(); cfg.close = $('#pe').value.trim();
+    cfg.mode = $('#pm').value; cfg.lang = $('#pl').value;
+    cfg.showMic = $('#pmic').checked;
+    save();
+    $('#panel').style.display = 'none';
+    render(); rearm();
+  }
+
+  $('#pdone').onclick = closePanel;
+  $('#pf').onchange = e => {
+    const f = e.target.files[0]; if(!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      const im = new Image();
+      im.onload = () => {
+        const s = Math.min(1, 1600 / Math.max(im.width, im.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(im.width * s); c.height = Math.round(im.height * s);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        let q = .85, d = c.toDataURL('image/jpeg', q);
+        while(d.length > 2.5e6 && q > .4){ q -= .1; d = c.toDataURL('image/jpeg', q); }
+        cfg.photo = d;
+        if(save()){ render(); setStatus('Foto cargada ✓'); }
+      };
+      im.src = r.result;
+    };
+    r.readAsDataURL(f);
+  };
+  $('#pcopy').onclick = async () => {
+    try{ await navigator.clipboard.writeText(accLink()); setStatus('Enlace copiado ✓'); }
+    catch(e){ $('#pk').select(); setStatus('Cópialo manualmente.'); }
+  };
+  $('#pnew').onclick = () => {
+    cfg.room = newRoom(); save(); $('#pk').value = accLink();
+    setStatus('Código nuevo. Envía el enlace nuevo al cómplice.');
+  };
+  $('#ptest').onclick = () => {
+    const t = $('#pt').value.includes('{X}') ? $('#pt').value : ($('#pt').value + ' {X}');
+    const keep = cfg.tpl; cfg.tpl = t;
+    $('#panel').style.display = 'none';
+    fired = true; reveal('María');
+    cfg.tpl = keep;
+    setTimeout(() => { fired = false; rearm(); openPanel(); }, 2600);
+  };
+  $('#preset').onclick = () => { rearm(); setStatus('Reiniciado.'); };
+
+  render();
+  connectLink();
+})();
+</script>
+</body>
+</html>
