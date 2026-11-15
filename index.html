@@ -64,7 +64,8 @@
 
   <div class="f">
     <label>Foto (de tu galería)</label>
-    <input id="pf" type="file" accept="image/*">
+    <input id="pf" type="file" accept="image/jpeg,image/png,image/webp">
+    <div class="hint">Si el iPhone dice “Reintentar”, abre antes la foto en Fotos para que termine de descargarse de iCloud, o elige otra.</div>
   </div>
   <div class="f">
     <label>Pie de foto normal (antes de la revelación)</label>
@@ -360,24 +361,32 @@
   }
 
   $('#pdone').onclick = closePanel;
-  $('#pf').onchange = e => {
+  $('#pf').onchange = async e => {
     const f = e.target.files[0]; if(!f) return;
-    const r = new FileReader();
-    r.onload = () => {
-      const im = new Image();
-      im.onload = () => {
-        const s = Math.min(1, 1600 / Math.max(im.width, im.height));
-        const c = document.createElement('canvas');
-        c.width = Math.round(im.width * s); c.height = Math.round(im.height * s);
-        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-        let q = .85, d = c.toDataURL('image/jpeg', q);
-        while(d.length > 2.5e6 && q > .4){ q -= .1; d = c.toDataURL('image/jpeg', q); }
-        cfg.photo = d;
-        if(save()){ render(); setStatus('Foto cargada ✓'); }
-      };
-      im.src = r.result;
-    };
-    r.readAsDataURL(f);
+    setStatus('Cargando foto…');
+    try{
+      let src, w, h, bmp = null, url = null;
+      if(window.createImageBitmap){
+        try{ bmp = await createImageBitmap(f); w = bmp.width; h = bmp.height; src = bmp; }catch(err){ bmp = null; }
+      }
+      if(!bmp){
+        url = URL.createObjectURL(f);
+        src = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = url; });
+        w = src.naturalWidth; h = src.naturalHeight;
+      }
+      const s = Math.min(1, 1600 / Math.max(w, h));
+      const c = document.createElement('canvas');
+      c.width = Math.round(w * s); c.height = Math.round(h * s);
+      c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+      if(url) URL.revokeObjectURL(url);
+      let q = .85, d = c.toDataURL('image/jpeg', q);
+      while(d.length > 2.5e6 && q > .4){ q -= .1; d = c.toDataURL('image/jpeg', q); }
+      cfg.photo = d;
+      if(save()){ render(); setStatus('Foto cargada ✓'); }
+    }catch(err){
+      setStatus('No se pudo leer esa foto. Prueba con otra o una captura de pantalla.');
+    }
+    e.target.value = '';
   };
   $('#pcopy').onclick = async () => {
     try{ await navigator.clipboard.writeText(accLink()); setStatus('Enlace copiado ✓'); }
